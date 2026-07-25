@@ -1,106 +1,99 @@
 import os
-import threading
+from threading import Thread
 from flask import Flask
 import telebot
 from telebot import types
 
-# Render o'chirib qo'ymasligi uchun Flask server
+# 1. Telegram Bot Tokeningiz
+TOKEN = "8868930479:AAELllmp_aGLgzBMcRtsCMTTjjYzqcGUjlI"
+bot = telebot.TeleBot(TOKEN)
+
+# 2. Flask web-serveri (Render uzluksiz ishlashi va sleep mode'ga o'tib qolmasligi uchun)
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "Bot muvaffaqiyatli ishlamoqda!"
+    return "IELTS Bot 24/7 ishlamoqda!"
 
 def run_flask():
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
 
-# ⚠️ Shu yerga BotFather'dan olgan tokeningizni qo'ying:
-TOKEN = '8868930479:AAELllmp_aGLgzBMcRtsCMTTjjYzqcGUjlI'
-bot = telebot.TeleBot(TOKEN)
-
+# 3. /start buyrug'i - Tugmalarni chiqarish
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-    btn1 = types.KeyboardButton('🎧 Listening')
-    btn2 = types.KeyboardButton('📖 Reading')
-    btn3 = types.KeyboardButton('✍️ Writing')
-    btn4 = types.KeyboardButton('🗣️ Speaking')
-    markup.add(btn1, btn2, btn3, btn4)
+    
+    btn_listening = types.KeyboardButton("🎧 Listening")
+    btn_reading = types.KeyboardButton("📖 Reading")
+    btn_writing = types.KeyboardButton("✍️ Writing")
+    btn_speaking = types.KeyboardButton("🗣 Speaking")
+    
+    markup.add(btn_listening, btn_reading, btn_writing, btn_speaking)
     
     bot.send_message(
         message.chat.id, 
-        "Xush kelibsiz! **Cambridge IELTS 9 - Test 1** materiallarini ko'rish uchun kerakli bo'lim tugmasini bosing:", 
-        reply_markup=markup,
-        parse_mode='Markdown'
+        "Assalomu alaykum! Cambridge IELTS 9 tayyorgarlik botiga xush kelibsiz.\n\nKerakli bo'limni tanlang:", 
+        reply_markup=markup
     )
 
-@bot.message_handler(func=lambda message: message.text == '🎧 Listening')
-def send_listening(message):
-    text = """🎧 **Cambridge IELTS 9 - Test 1: Listening**
+# 4. Tugmalar bosilganda fayllarni yuborish
+@bot.message_handler(func=lambda message: True)
+def handle_buttons(message):
+    chat_id = message.chat.id
+    text = message.text
 
-📌 **Section 1: Job Enquiry**
-1. answer(ing) (the) phone | 2. Hillsdunne Road | 3. library
-4. 4.45 | 5. national holidays | 6. after 11 (o'clock)
-7. clear voice | 8. think quickly | 9. 22 October | 10. Manuja
+    # 🎧 LISTENING (Audio fayl yuborish)
+    if text == "🎧 Listening":
+        try:
+            with open("audio.mp3", "rb") as audio:
+                bot.send_audio(chat_id, audio, caption="🎧 Cambridge IELTS 9 - Listening Audio")
+        except FileNotFoundError:
+            bot.send_message(chat_id, "❌ 'audio.mp3' fayli GitHub repositoriyasida topilmadi.")
 
-📌 **Section 2: Sports World**
-11. branch | 12. west | 13. clothing | 14. 10 | 15. running
-16. bags | 17. A | 18. A | 19-20. A, E
+    # 📖 READING (HTML fayl yuborish)
+    elif text == "📖 Reading":
+        try:
+            with open("reading.html", "rb") as html_file:
+                bot.send_document(chat_id, html_file, caption="📖 Cambridge IELTS 9 - Reading Material")
+        except FileNotFoundError:
+            bot.send_message(chat_id, "❌ 'reading.html' fayli GitHub repositoriyasida topilmadi.")
 
-📌 **Section 3: Course Feedback**
-21. B | 22. C | 23. B | 24. A | 25. C
-26. B | 27. A | 28. B | 29. C | 30. B
+    # ✍️ WRITING (HTML fayl yuborish)
+    elif text == "✍️ Writing":
+        try:
+            with open("writing.html", "rb") as html_file:
+                bot.send_document(chat_id, html_file, caption="✍️ Cambridge IELTS 9 - Writing Material")
+        except FileNotFoundError:
+            bot.send_message(chat_id, "❌ 'writing.html' fayli GitHub repositoriyasida topilmadi.")
 
-📌 **Section 4: Whales & Dolphins**
-31. tide/tides | 32. hearing/ear/ears | 33. plants / animals/fish/fishes
-34. feeding | 35. noise/noises | 36. healthy | 37. group
-38. social | 39. leader | 40. network/networks"""
-    bot.send_message(message.chat.id, text, parse_mode='Markdown')
+    # 🗣 SPEAKING (3 ta rasmni bitta albom/media-group qilib yuborish)
+    elif text == "🗣 Speaking":
+        try:
+            img1 = open("speaking1.jpg", "rb")
+            img2 = open("speaking2.jpg", "rb")
+            img3 = open("speaking3.jpg", "rb")
+            
+            media_group = [
+                types.InputMediaPhoto(img1, caption="🗣 Cambridge IELTS 9 - Speaking Practice Materials"),
+                types.InputMediaPhoto(img2),
+                types.InputMediaPhoto(img3)
+            ]
+            
+            bot.send_media_group(chat_id, media_group)
+            
+            # Fayllarni yopish
+            img1.close()
+            img2.close()
+            img3.close()
+        except FileNotFoundError:
+            bot.send_message(chat_id, "❌ Speaking rasmlari ('speaking1.jpg', 'speaking2.jpg', 'speaking3.jpg') topilmadi.")
 
-@bot.message_handler(func=lambda message: message.text == '📖 Reading')
-def send_reading(message):
-    text = """📖 **Cambridge IELTS 9 - Test 1: Reading**
-
-📌 **Passage 1: William Henry Perkin**
-• **Mavzu:** Ilk sintetik bo'yoq kashfiyoti va Perkin hayoti.
-• **Savol turlari:** True/False/Not Given, Diagram, Short Answer.
-
-📌 **Passage 2: Is Everybody Having Fun?**
-• **Mavzu:** Ish joyidagi psixologiya va ruhiy holat.
-• **Savol turlari:** Matching Headings, Summary, Multiple Choice.
-
-📌 **Passage 3: The Concept of Intelligence**
-• **Mavzu:** Inson intellekti va psixometriya.
-• **Savol turlari:** Matching Information, True/False/Not Given, Multiple Choice."""
-    bot.send_message(message.chat.id, text, parse_mode='Markdown')
-
-@bot.message_handler(func=lambda message: message.text == '✍️ Writing')
-def send_writing(message):
-    text = """✍️ **Cambridge IELTS 9 - Test 1: Writing**
-
-📊 **Task 1 (Line Graph):**
-Yillar davomida ma'lum bir hududdagi aholining yosh guruhlari bo'yicha foiz ko'rsatkichlari o'zgarishini tasvirlash.
-
-📝 **Task 2 (Discussion Essay):**
-*"Some people think that universities should provide graduates with the knowledge and skills needed in the workplace. Others think that the true function of a university should be to give access to knowledge for its own sake, regardless of whether the course is useful to an employer. Discuss both views and give your opinion."*"""
-    bot.send_message(message.chat.id, text, parse_mode='Markdown')
-
-@bot.message_handler(func=lambda message: message.text == '🗣️ Speaking')
-def send_speaking(message):
-    text = """🗣️ **Cambridge IELTS 9 - Test 1: Speaking**
-
-🔹 **Part 1:**
-• Telephoning | Games | Daily Routine
-
-🔹 **Part 2 (Cue Card):**
-> *"Describe a person who has done a lot of work to help people."*
-
-🔹 **Part 3 (Discussion):**
-• Jamiyatda xayriya va o'zaro yordam.
-• Ko'ngillilik (volunteering) harakatining ahamiyati."""
-    bot.send_message(message.chat.id, text, parse_mode='Markdown')
-
+# 5. Bot va Flask serverini ishga tushirish
 if __name__ == '__main__':
-    threading.Thread(target=run_flask).start()
-    bot.polling(none_stop=True)
+    # Flask serverni fon rejimida (Thread) ishga tushiramiz
+    t = Thread(target=run_flask)
+    t.start()
+    
+    print("Bot muvaffaqiyatli ishga tushdi!")
+    bot.infinity_polling()
