@@ -1,99 +1,101 @@
 import os
-from threading import Thread
+import threading
 from flask import Flask
 import telebot
 from telebot import types
 
-# 1. Telegram Bot Tokeningiz
-TOKEN = "8868930479:AAELllmp_aGLgzBMcRtsCMTTjjYzqcGUjlI"
-bot = telebot.TeleBot(TOKEN)
-
-# 2. Flask web-serveri (Render uzluksiz ishlashi va sleep mode'ga o'tib qolmasligi uchun)
+# Render o'chirib qo'ymasligi uchun Flask server
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "IELTS Bot 24/7 ishlamoqda!"
+    return "Bot muvaffaqiyatli ishlamoqda!"
 
 def run_flask():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
 
-# 3. /start buyrug'i - Tugmalarni chiqarish
+# Bot Father'dan olgan tokeningiz
+TOKEN = '8868930479:AAEl1mp_aGLgzBMcRtsCMTTjYzqcGUjLI'
+bot = telebot.TeleBot(TOKEN)
+
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-    
-    btn_listening = types.KeyboardButton("🎧 Listening")
-    btn_reading = types.KeyboardButton("📖 Reading")
-    btn_writing = types.KeyboardButton("✍️ Writing")
-    btn_speaking = types.KeyboardButton("🗣 Speaking")
-    
-    markup.add(btn_listening, btn_reading, btn_writing, btn_speaking)
-    
+    btn1 = types.KeyboardButton('🎧 Listening')
+    btn2 = types.KeyboardButton('📖 Reading')
+    btn3 = types.KeyboardButton('✍️ Writing')
+    btn4 = types.KeyboardButton('🗣️ Speaking')
+    markup.add(btn1, btn2, btn3, btn4)
+
     bot.send_message(
-        message.chat.id, 
-        "Assalomu alaykum! Cambridge IELTS 9 tayyorgarlik botiga xush kelibsiz.\n\nKerakli bo'limni tanlang:", 
-        reply_markup=markup
+        message.chat.id,
+        "Xush kelibsiz! **Cambridge IELTS 9** materiallarini ko'rish uchun kerakli bo'lim tugmasini bosing:",
+        reply_markup=markup,
+        parse_mode='Markdown'
     )
 
-# 4. Tugmalar bosilganda fayllarni yuborish
 @bot.message_handler(func=lambda message: True)
-def handle_buttons(message):
+def handle_menu(message):
     chat_id = message.chat.id
     text = message.text
 
-    # 🎧 LISTENING (Audio fayl yuborish)
+    # 🎧 LISTENING (1 ta Audio + 1 ta Test PDF + 1 ta Javoblar PDF)
     if text == "🎧 Listening":
         try:
+            # 1. Audio fayl
             with open("audio.mp3", "rb") as audio:
                 bot.send_audio(chat_id, audio, caption="🎧 Cambridge IELTS 9 - Listening Audio")
-        except FileNotFoundError:
-            bot.send_message(chat_id, "❌ 'audio.mp3' fayli GitHub repositoriyasida topilmadi.")
+            
+            # 2. Test PDF
+            with open("listening_test.pdf", "rb") as test_doc:
+                bot.send_document(chat_id, test_doc, caption="📄 Listening Test (Savollar)")
+            
+            # 3. Javoblar PDF
+            with open("listening_answers.pdf", "rb") as answers_doc:
+                bot.send_document(chat_id, answers_doc, caption="✅ Listening Answers (Javoblar)")
 
-    # 📖 READING (HTML fayl yuborish)
+        except FileNotFoundError as e:
+            bot.send_message(chat_id, f"❌ Fayl topilmadi: '{e.filename}'\nIltimos, GitHub'ga faylni yuklaganingizni tekshiring.")
+
+    # 📖 READING (HTML hujjat)
     elif text == "📖 Reading":
         try:
-            with open("reading.html", "rb") as html_file:
-                bot.send_document(chat_id, html_file, caption="📖 Cambridge IELTS 9 - Reading Material")
+            with open("reading.html", "rb") as doc:
+                bot.send_document(chat_id, doc, caption="📖 Cambridge IELTS 9 - Reading Material")
         except FileNotFoundError:
             bot.send_message(chat_id, "❌ 'reading.html' fayli GitHub repositoriyasida topilmadi.")
 
-    # ✍️ WRITING (HTML fayl yuborish)
+    # ✍️ WRITING (HTML hujjat)
     elif text == "✍️ Writing":
         try:
-            with open("writing.html", "rb") as html_file:
-                bot.send_document(chat_id, html_file, caption="✍️ Cambridge IELTS 9 - Writing Material")
+            with open("writing.html", "rb") as doc:
+                bot.send_document(chat_id, doc, caption="✍️ Cambridge IELTS 9 - Writing Material")
         except FileNotFoundError:
             bot.send_message(chat_id, "❌ 'writing.html' fayli GitHub repositoriyasida topilmadi.")
 
-    # 🗣 SPEAKING (3 ta rasmni bitta albom/media-group qilib yuborish)
-    elif text == "🗣 Speaking":
+    # 🗣️ SPEAKING (3 ta Rasm albomi)
+    elif text == "🗣️ Speaking":
         try:
             img1 = open("speaking1.jpg", "rb")
             img2 = open("speaking2.jpg", "rb")
             img3 = open("speaking3.jpg", "rb")
-            
-            media_group = [
-                types.InputMediaPhoto(img1, caption="🗣 Cambridge IELTS 9 - Speaking Practice Materials"),
+
+            media = [
+                types.InputMediaPhoto(img1, caption="🗣️ Cambridge IELTS 9 - Speaking Material"),
                 types.InputMediaPhoto(img2),
                 types.InputMediaPhoto(img3)
             ]
-            
-            bot.send_media_group(chat_id, media_group)
-            
-            # Fayllarni yopish
+            bot.send_media_group(chat_id, media)
+
             img1.close()
             img2.close()
             img3.close()
         except FileNotFoundError:
             bot.send_message(chat_id, "❌ Speaking rasmlari ('speaking1.jpg', 'speaking2.jpg', 'speaking3.jpg') topilmadi.")
 
-# 5. Bot va Flask serverini ishga tushirish
-if __name__ == '__main__':
-    # Flask serverni fon rejimida (Thread) ishga tushiramiz
-    t = Thread(target=run_flask)
-    t.start()
-    
-    print("Bot muvaffaqiyatli ishga tushdi!")
-    bot.infinity_polling()
+if __name__ == "__main__":
+    # Flask serverni alohida oqimda (thread) ishga tushirish
+    threading.Thread(target=run_flask).start()
+    # Botni ishga tushirish
+    bot.polling(none_stop=True)
